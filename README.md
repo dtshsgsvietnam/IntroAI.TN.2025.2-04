@@ -17,8 +17,7 @@
    - Mục tiêu: Độ chính xác trên tập kiểm thử đạt trên 85%.
 
    ## 3. Cấu trúc thư mục chi tiết
-   ## 3. CẤU TRÚC THƯ MỤC CHI TIẾT
-
+  
 ```text
 handwriting-recognition-app/
 ├── .gitignore                  # Cau hinh bo qua file nang
@@ -47,7 +46,7 @@ handwriting-recognition-app/
     ├── diagrams/               # So do
     ├── reports/                # Ket qua
     └── Proposal_introAI.pdf    # Ban de xuat
-
+```
    ## 4. Hướng dẫn cài đặt
    1. Cài đặt các thư viện cần thiết:
       pip install -r requirements.txt
