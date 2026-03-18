@@ -1,0 +1,10 @@
+# XỬ LÝ ẢNH (COMPUTER VISION)
+opencv-python==4.8.0.76
+
+# HỌC SÂU VÀ TRÍ TUỆ NHÂN TẠO (AI/ML)
+torch==2.1.0
+torchvision==0.16.0
+
+# XỬ LÝ DỮ LIỆU VÀ ĐỒ THỊ
+numpy==1.24.3
+Pillow==10.0.0

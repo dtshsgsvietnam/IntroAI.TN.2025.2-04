@@ -1,0 +1,27 @@
+# DU LIEU VA MO HINH
+backend/data/
+backend/models/*.pth
+backend/models/*.h5
+backend/models/*.pt
+
+# PYTHON VA MOI TRUONG AO
+__pycache__/
+*.pyc
+venv/
+.env
+.venv
+env/
+build/
+dist/
+*.spec
+
+# THU VIEN VA HE THONG
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+
+# FILE TAM THOI
+frontend/assets/temp/
+docs/reports/*.png
