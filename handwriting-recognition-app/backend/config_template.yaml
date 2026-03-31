@@ -1,0 +1,123 @@
+# Configuration Template cho Handwriting Recognition System
+# Sao chép file này thành config_custom.yaml để customize
+
+# ============================================================================
+# DATASET
+# ============================================================================
+dataset:
+  data_dir: "backend/data/iam"
+  image_size:
+    width: 128
+    height: 32
+  train_val_split: 0.95
+  bad_samples:
+    - "a01-117-05-02"
+    - "r06-022-03-05"
+
+# ============================================================================
+# MODEL
+# ============================================================================
+model:
+  cnn:
+    hidden_dim: 256
+    in_channels: 1
+  
+  rnn:
+    hidden_dim: 256
+    num_layers: 2
+    dropout: 0.5
+    bidirectional: true
+  
+  ctc:
+    blank_token: 0
+    reduction: "mean"
+  
+  num_classes: 80
+  max_text_length: 100
+
+# ============================================================================
+# TRAINING
+# ============================================================================
+training:
+  num_epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.00001
+  
+  optimizer:
+    type: "adam"  # adam, sgd, rmsprop
+    betas: [0.9, 0.999]
+  
+  scheduler:
+    use: true
+    type: "exponential"  # exponential, cosine, step
+    gamma: 0.9
+    step_size: 10
+  
+  gradient_clipping:
+    enabled: true
+    max_norm: 1.0
+  
+  early_stopping:
+    enabled: true
+    patience: 10  # Số epochs chờ trước dừng
+  
+  checkpoint:
+    save_interval: 1
+    save_best_only: true
+    save_dir: "backend/models"
+
+# ============================================================================
+# DATA LOADING
+# ============================================================================
+data_loading:
+  num_workers: 0  # 0 = main process, > 0 = parallel workers (Windows: 0)
+  pin_memory: true
+  prefetch_factor: 2
+
+# ============================================================================
+# DEVICE
+# ============================================================================
+device:
+  use_cuda: true
+  gpu_ids: [0]  # Multi-GPU support
+  device_type: "cuda"  # cuda, cpu
+
+# ============================================================================
+# INFERENCE
+# ============================================================================
+inference:
+  decoding_method: "greedy"  # greedy, beam_search
+  beam_width: 5
+  
+  visualization:
+    enabled: true
+    font_scale: 0.7
+    save_dir: "outputs/visualizations"
+
+# ============================================================================
+# METRICS
+# ============================================================================
+metrics:
+  compute_cer: true  # Character Error Rate
+  compute_wer: true  # Word Error Rate
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "backend/models/training.log"
+  tensorboard:
+    enabled: false
+    log_dir: "backend/models/tensorboard"
+
+# ============================================================================
+# AUGMENTATION (không dùng hiện tại)
+# ============================================================================
+augmentation:
+  enabled: false
+  rotation: 5
+  shear: 0.2
+  scale: 0.1
+  horizontal_flip: false

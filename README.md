@@ -19,12 +19,12 @@
    ## 3. Cấu trúc thư mục chi tiết
   
 ```text
-handwriting-recognition-app/
+INTRO.AI.TN.2025.2-04/
 ├── .gitignore                  # Cau hinh bo qua file nang
 ├── README.md                   # Tai lieu huong dan
 ├── requirements.txt            # Danh sach thu vien
 ├── backend/                    # Tang xu ly AI
-│   ├── data/                   # Dataset EMNIST/MNIST
+│   ├── data/                   # Dataset IAM Handwriting (ghi ra: backend/data/iam)
 │   ├── models/                 # File trong so .pth
 │   └── src/                    # Ma nguon chinh
 │       ├── __init__.py
@@ -48,17 +48,22 @@ handwriting-recognition-app/
     └── Proposal_introAI.pdf    # Ban de xuat
 ```
    ## 4. Hướng dẫn cài đặt
-   1. Cài đặt các thư viện cần thiết:
+   1. Tải và chuẩn bị dataset IAM Handwriting:
+      - Download từ: http://www.fki.inf.unibe.ch/databases/iam-handwriting-database
+      - Giải nén và đặt nội dung vào `backend/data/iam/`.
+      - Tiền xử lý/segment chữ (nếu cần) bằng các script trong `backend/src/` (ví dụ `dataset_loader.py`).
+
+   2. Cài đặt các thư viện cần thiết:
       pip install -r requirements.txt
 
-   2. Huấn luyện mô hình (thực hiện trên máy có GPU để tối ưu tốc độ):
+   3. Huấn luyện mô hình (thực hiện trên máy có GPU để tối ưu tốc độ):
       python backend/src/train.py
 
-   3. Khởi chạy ứng dụng Desktop:
+   4. Khởi chạy ứng dụng Desktop:
       python frontend/app.py
 
    ## 5. Quy trình thực hiện
-   - Giai đoạn 1: Thu thập và tiền xử lý dữ liệu EMNIST.
+   - Giai đoạn 1: Thu thập và tiền xử lý dữ liệu IAM Handwriting (segment dòng/từ/ký tự tùy chiến lược).
    - Giai đoạn 2: Xây dựng và huấn luyện mô hình CNN.
    - Giai đoạn 3: Phát triển thuật toán cắt tách ký tự bằng OpenCV.
    - Giai đoạn 4: Tích hợp mô hình vào giao diện PyQt6 và đóng gói.
