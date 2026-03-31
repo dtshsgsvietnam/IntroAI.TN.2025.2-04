@@ -17,7 +17,8 @@ from .dataset import IAMDataset
 from .config import (
     DATA_DIR, NUM_EPOCHS, BATCH_SIZE, LEARNING_RATE,
     SCHEDULER_TYPE, SCHEDULER_FACTOR, SCHEDULER_PATIENCE, SCHEDULER_MIN_LR,
-    DEVICE, NUM_WORKERS, MODELS_DIR
+    DEVICE, NUM_WORKERS, MODELS_DIR, WEIGHT_DECAY,
+    USE_EARLY_STOPPING, EARLY_STOPPING_PATIENCE, EARLY_STOPPING_MIN_DELTA
 )
 
 
@@ -66,6 +67,8 @@ class Trainer:
         save_dir="models",
         char_list=None,
         scheduler=None,
+        early_stopping_patience=10,
+        early_stopping_min_delta=0.001,
     ):
         self.model = model
         self.train_loader = train_loader
@@ -83,6 +86,11 @@ class Trainer:
         self.train_losses = []
         self.val_losses = []
         self.start_time = datetime.now()
+        
+        # Early stopping
+        self.early_stopping_patience = early_stopping_patience
+        self.early_stopping_min_delta = early_stopping_min_delta
+        self.early_stopping_counter = 0
 
     def encode_targets(self, texts):
         """Chuyển đổi list text thành targets + target_lengths"""
@@ -228,13 +236,14 @@ class Trainer:
             print(f"Best model saved: {best_path} (val_loss: {val_loss:.4f})")
 
     def train(self):
-        """Training loop"""
+        """Training loop với Early Stopping"""
         print(f"\n== TRAINING START ==")
         print(f"Device: {self.device}")
         print(f"Train samples: {len(self.train_loader.dataset)}")
         print(f"Val samples: {len(self.val_loader.dataset)}")
         print(f"Test samples: {len(self.test_loader.dataset)}")
         print(f"Alphabet size: {len(self.char_list)}")
+        print(f"Early Stopping: patience={self.early_stopping_patience}, min_delta={self.early_stopping_min_delta}")
         print()
         
         with tqdm(range(self.num_epochs), desc="Epochs") as pbar_epoch:
@@ -245,9 +254,15 @@ class Trainer:
                 self.train_losses.append(train_loss)
                 self.val_losses.append(val_loss)
                 
-                is_best = val_loss < self.best_val_loss
+                # Check if val_loss improved
+                improvement = self.best_val_loss - val_loss
+                is_best = improvement > self.early_stopping_min_delta
+                
                 if is_best:
                     self.best_val_loss = val_loss
+                    self.early_stopping_counter = 0  # Reset counter khi improve
+                else:
+                    self.early_stopping_counter += 1
                 
                 if self.scheduler:
                     self.scheduler.step(val_loss)
@@ -259,8 +274,14 @@ class Trainer:
                     "train_loss": f"{train_loss:.4f}",
                     "val_loss": f"{val_loss:.4f}",
                     "val_acc": f"{val_acc:.2%}",
+                    "es": f"{self.early_stopping_counter}/{self.early_stopping_patience}",
                     "time": f"{elapsed}s"
                 })
+                
+                # Early stopping
+                if self.early_stopping_counter >= self.early_stopping_patience:
+                    print(f"\n⚠️  Early stopping triggered! No improvement for {self.early_stopping_patience} epochs.")
+                    break
         
         print(f"\nTraining finished! Best val_loss: {self.best_val_loss:.4f}")
         
@@ -359,8 +380,9 @@ def main():
     num_classes = len(train_dataset.char_list) + 1
     model = create_model(num_classes=num_classes, device=args.device)
     
-    # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    # Optimizer với Weight Decay (L2 regularization)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY)
+    print(f"Optimizer: Adam (lr={args.lr}, weight_decay={WEIGHT_DECAY})")
     
     # Scheduler
     scheduler = None
@@ -382,6 +404,8 @@ def main():
         save_dir=args.save_dir,
         char_list=train_dataset.char_list,
         scheduler=scheduler,
+        early_stopping_patience=EARLY_STOPPING_PATIENCE,
+        early_stopping_min_delta=EARLY_STOPPING_MIN_DELTA,
     )
     
     trainer.train()

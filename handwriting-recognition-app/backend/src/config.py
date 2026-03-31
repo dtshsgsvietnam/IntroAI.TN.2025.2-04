@@ -21,18 +21,22 @@ NUM_CLASSES = 80
 CNN_HIDDEN_DIM = 256
 LSTM_HIDDEN_DIM = 256
 LSTM_NUM_LAYERS = 2
-DROPOUT = 0.5
-CTC_BLANK = 0
+DROPOUT = 0.5  # Dropout rate trong LSTM (tránh overfitting)
 
 # TRAINING - Optimized for RTX 5060 Ti (16GB)
-NUM_EPOCHS = 60  # Quick training to test
-BATCH_SIZE = 256  # RTX 5060 Ti 16GB -> batch 256 OK (~1GB)
-LEARNING_RATE = 0.0005  # Giảm vì batch size lớn, gradient ít noisy
+NUM_EPOCHS = 25
+BATCH_SIZE = 256
+LEARNING_RATE = 0.0005
 OPTIMIZER = "adam"
 GRAD_CLIP = 1.0
+
+# ==================== REGULARIZATION (tránh overfitting) ====================
+WEIGHT_DECAY = 0.0001  # L2 regularization trong optimizer (0.0001-0.001 tốt)
+LABEL_SMOOTHING = 0.0  # Cross-entropy label smoothing (0-0.1, 0 = disable)
 USE_EARLY_STOPPING = True
-EARLY_STOPPING_PATIENCE = 10
-SAVE_BEST_ONLY = True
+EARLY_STOPPING_PATIENCE = 10  # Stop nếu val_loss không improve 10 epochs
+EARLY_STOPPING_MIN_DELTA = 0.001  # Coi là improve nếu loss giảm >= 0.001
+# ===========================================================================
 
 # SCHEDULER - Learning Rate Schedule
 USE_SCHEDULER = True

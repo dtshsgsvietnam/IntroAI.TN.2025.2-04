@@ -9,6 +9,7 @@ Kiến trúc:
 import torch
 import torch.nn as nn
 from typing import List, Tuple, Optional
+from itertools import groupby
 
 
 class CNNFeatureExtractor(nn.Module):
@@ -188,8 +189,12 @@ class HandwritingRecognitionModel(nn.Module):
 
     def decode_greedy(self, log_probs: torch.Tensor) -> List[int]:
         """
-        Greedy decoding: lấy ký tự có xác suất cao nhất tại mỗi time step.
-        Loại bỏ blank (0) và collapse consecutive duplicates theo CTC convention.
+        Greedy CTC decoding: lấy ký tự có xác suất cao nhất tại mỗi time step.
+        ĐÚNG THỨ TỰ CTC:
+            1. Collapse consecutive duplicates TRƯỚC (groupby)
+            2. Loại bỏ blank (0) SAU
+        
+        Điều này tránh mất các ký tự lặp (ví dụ: "hello" không biến thành "helo").
 
         Args:
             log_probs: (T, B, num_classes) - log softmax output từ model
@@ -205,17 +210,16 @@ class HandwritingRecognitionModel(nn.Module):
 
         predictions = []
         for pred_seq in predicted_indices:
-            # Bước 1: Loại bỏ blank (token 0)
-            non_blank = [idx.item() for idx in pred_seq if idx.item() != 0]
+            # Convert to list of integers
+            seq = [idx.item() for idx in pred_seq]
             
-            # Bước 2: Collapse consecutive duplicates
-            if non_blank:
-                pred_text = [non_blank[0]]
-                for idx in non_blank[1:]:
-                    if idx != pred_text[-1]:
-                        pred_text.append(idx)
-            else:
-                pred_text = []
+            # Bước 1: Collapse consecutive duplicates TRƯỚC (CTC convention)
+            # Ví dụ: [1, 1, 2, 3, 0, 3, 3, 4] -> [1, 2, 3, 0, 3, 4]
+            collapsed = [k for k, _ in groupby(seq)]
+            
+            # Bước 2: Loại bỏ blank (token 0) SAU
+            # Ví dụ: [1, 2, 3, 0, 3, 4] -> [1, 2, 3, 3, 4] = "hello"
+            pred_text = [idx for idx in collapsed if idx != 0]
             
             predictions.append(pred_text)
 

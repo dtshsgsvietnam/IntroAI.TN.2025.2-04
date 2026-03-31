@@ -1,19 +1,21 @@
-# XỬ LÝ ẢNH (COMPUTER VISION)
+# Core Machine Learning & AI
+torch==2.12.0.dev20260330+cu128
+torchvision==0.22.0.dev20250226+cu124
+numpy==2.2.6
+scipy==1.15.3
+pandas==2.1.1
+matplotlib==3.10.8
+
+# Computer Vision (Handwriting Recognition)
 opencv-python==4.8.0.76
-
-# HỌC SÂU VÀ TRÍ TUỆ NHÂN TẠO (AI/ML)
-torch==2.1.0
-torchvision==0.16.0
-
-# XỬ LÝ DỮ LIỆU VÀ ĐỒ THỊ
-numpy==1.24.3
+albumentations==2.0.8
 Pillow==10.0.0
 
-# THANH TIẾN ĐỘ VÀ LOGGING
+# UI & Tools
+PyQt6==6.5.2
 tqdm==4.66.1
+PyYAML==6.0.3
 
-# GIAO DIỆN NGƯỜI DÙNG
-PyQt6==6.6.1
-
-# CÁC CÔNG CỤ KHÁC
-matplotlib==3.8.0
+# Optimization & Math
+sympy==1.14.0
+networkx==3.4.2
