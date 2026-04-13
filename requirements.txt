@@ -1,7 +1,18 @@
-editdistance==0.5.2
-lmdb==1.0.0
-matplotlib==3.2.1
-numpy==1.19.5
-opencv-python==4.4.0.46
-path==15.0.0
-tensorflow==2.4.0
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# Core DL stack (CUDA 12.8 wheels from PyTorch index)
+torch>=2.7,<2.8
+torchvision>=0.22,<0.23
+
+# Numerical and image processing
+numpy>=1.26,<2.1
+opencv-python>=4.10,<4.12
+
+# Training / inference UX
+tqdm>=4.66,<5.0
+
+# Optional scientific metrics utilities
+scipy>=1.13,<1.15
+
+# Training history visualization
+matplotlib>=3.9,<3.11

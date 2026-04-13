@@ -1,135 +1,86 @@
-# Handwritten Text Recognition with TensorFlow
+# SimpleHTR PyTorch: Nhận dạng chữ viết tay với CRNN + CTC
 
-* **Update 2023/2: a [web demo](https://githubharald.github.io/text_reader.html) is available**
-* **Update 2023/1: see [HTRPipeline](https://github.com/githubharald/HTRPipeline) for a package to read full pages**
-* **Update 2021/2: recognize text on line level (multiple words)**
-* **Update 2021/1: more robust model, faster dataloader, word beam search decoder also available for Windows**
-* **Update 2020: code is compatible with TF2**
+## Giới thiệu
+Dự án triển khai bài toán Handwritten Text Recognition (HTR) offline bằng PyTorch.
+Pipeline sử dụng kiến trúc CRNN kết hợp CTC Loss cho nhận dạng chuỗi ký tự từ ảnh từ đơn.
+Toàn bộ vòng đời train/infer được thiết kế theo hướng ổn định, tái lập và tối ưu tốc độ.
+Cấu hình mặc định đã tinh chỉnh cho GPU lớp NVIDIA RTX 5060 Ti.
 
+Mục tiêu hệ thống:
+- Input: ảnh xám chứa một từ (single-word image)
+- Output: chuỗi ký tự dự đoán
+- Loss: CTC với blank token tường minh
 
-Handwritten Text Recognition (HTR) system implemented with TensorFlow (TF) and trained on the IAM off-line HTR dataset.
-The model takes **images of single words or text lines (multiple words) as input** and **outputs the recognized text**.
-3/4 of the words from the validation-set are correctly recognized, and the character error rate is around 10%.
+## Kiến trúc mô hình
+### 1) CNN Backbone
+Backbone CNN trích xuất đặc trưng nét chữ từ ảnh đã chuẩn hóa kích thước 32x256.
+Chiều rộng được giảm có kiểm soát để giữ đủ độ phân giải theo trục thời gian.
 
-![htr](./doc/htr.png)
+Điểm kỹ thuật quan trọng:
+- Dùng Flatten Height thay cho phép lấy trung bình theo chiều cao.
+- Tensor đặc trưng được đổi về [B, W, C, H], sau đó flatten thành [B, W, CxH].
+- Cách làm này giữ thông tin không gian theo chiều dọc (ascender/descender, giao nét).
 
+### 2) RNN Sequence Model
+Khối Bi-LSTM 2 lớp học ngữ cảnh chuỗi theo cả hai chiều trái-phải và phải-trái.
+Projection layer trước RNN giúp nén đặc trưng và ổn định gradient.
 
-## Run demo
+### 3) CTC Head
+Classifier xuất log-probabilities dạng [T, B, C] cho CTCLoss.
+Pha suy luận sử dụng Greedy CTC Decoder để:
+- gộp ký tự lặp liên tiếp
+- loại bỏ blank token
 
-* Download one of the pretrained models
-  * [Model trained on word images](https://www.dropbox.com/s/mya8hw6jyzqm0a3/word-model.zip?dl=1): 
-    only handles single words per image, but gives better results on the IAM word dataset
-  * [Model trained on text line images](https://www.dropbox.com/s/7xwkcilho10rthn/line-model.zip?dl=1):
-    can handle multiple words in one image
-* Put the contents of the downloaded zip-file into the `model` directory of the repository  
-* Go to the `src` directory 
-* Run inference code:
-  * Execute `python main.py` to run the model on an image of a word
-  * Execute `python main.py --img_file ../data/line.png` to run the model on an image of a text line
+## Tối ưu huấn luyện
+### Mixed Precision (AMP)
+Huấn luyện dùng torch.amp.autocast và GradScaler để tăng throughput.
+Trình tự cập nhật chuẩn:
+1. scale(loss).backward()
+2. unscale gradient
+3. clip gradient
+4. optimizer.step()
+5. scaler.update()
 
-The input images, and the expected outputs are shown below when the text line model is used.
+Unscale trước clip là bắt buộc để clipping đúng về mặt số học khi dùng AMP.
 
-![test](./data/word.png)
-```
-> python main.py
-Init with stored values from ../model/snapshot-13
-Recognized: "word"
-Probability: 0.9806370139122009
-```
+### Data Augmentation chống overfitting
+Augmentation được áp dụng trong bước preprocess của dataset ở chế độ train:
+- Random Rotation
+- Random Horizontal Shear
+- Morphological transforms (erosion/dilation)
 
-![test](./data/line.png)
+### Regularization
+- Dropout trong RNN: 0.5
+- Dropout2d ở các block CNN sâu
+- Weight Decay: 1e-4
+- Early stopping theo xu hướng CER validation
 
-```
-> python main.py --img_file ../data/line.png
-Init with stored values from ../model/snapshot-13
-Recognized: "or work on line level"
-Probability: 0.6674373149871826
-```
+## Tăng tốc phần cứng
+Training loop bật các tối ưu GPU chuyên dụng:
+- TF32 matmul cho CUDA
+- cuDNN benchmark + TF32
+- DataLoader pin_memory
+- persistent_workers
+- prefetch_factor
 
-## Command line arguments
-* `--mode`: select between "train", "validate" and "infer". Defaults to "infer".
-* `--decoder`: select from CTC decoders "bestpath", "beamsearch" and "wordbeamsearch". Defaults to "bestpath". For option "wordbeamsearch" see details below.
-* `--batch_size`: batch size.
-* `--data_dir`: directory containing IAM dataset (with subdirectories `img` and `gt`).
-* `--fast`: use LMDB to load images faster.
-* `--line_mode`: train reading text lines instead of single words.
-* `--img_file`: image that is used for inference.
-* `--dump`: dumps the output of the NN to CSV file(s) saved in the `dump` folder. Can be used as input for the [CTCDecoder](https://github.com/githubharald/CTCDecoder).
+Các thiết lập này giúp chồng lấp I/O và compute tốt hơn trên RTX 5060 Ti.
 
+## Cách sử dụng
+Giả sử đang đứng tại thư mục gốc dự án.
 
-## Integrate word beam search decoding
+Huấn luyện:
+python src/train.py --mode train --data_root dataset --label_file dataset/label.txt --batch_size 64 --epochs 80
 
-The [word beam search decoder](https://githubharald.github.io/publications.html) can be used instead of the two decoders shipped with TF.
-Words are constrained to those contained in a dictionary, but arbitrary non-word character strings (numbers, punctuation marks) can still be recognized.
-The following illustration shows a sample for which word beam search is able to recognize the correct text, while the other decoders fail.
+Suy luận 1 ảnh:
+python src/inference.py --checkpoint src/checkpoints/best_model.pth --input dataset/words/c06/c06-138/c06-138-10-01.png --device cuda
 
-![decoder_comparison](./doc/decoder_comparison.png)
+Suy luận cả thư mục:
+python src/inference.py --checkpoint src/checkpoints/best_model.pth --input dataset/words/c06 --device cuda
 
-Follow these instructions to integrate word beam search decoding:
+Định dạng output ảnh đơn:
+Prediction: [TEXT]
 
-1. Clone repository [CTCWordBeamSearch](https://github.com/githubharald/CTCWordBeamSearch)
-2. Compile and install by running `pip install .` at the root level of the CTCWordBeamSearch repository
-3. Specify the command line option `--decoder wordbeamsearch` when executing `main.py` to actually use the decoder
-
-The dictionary is automatically created in training and validation mode by using all words contained in the IAM dataset (i.e. also including words from validation set) and is saved into the file `data/corpus.txt`.
-Further, the manually created list of word-characters can be found in the file `model/wordCharList.txt`.
-Beam width is set to 50 to conform with the beam width of vanilla beam search decoding.
-
-
-## Train model on IAM dataset
-
-### Prepare dataset
-Follow these instructions to get the IAM dataset:
-
-* Register for free at this [website](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database)
-* Download `words/words.tgz`
-* Download `ascii/words.txt`
-* Create a directory for the dataset on your disk, and create two subdirectories: `img` and `gt`
-* Put `words.txt` into the `gt` directory
-* Put the content (directories `a01`, `a02`, ...) of `words.tgz` into the `img` directory
-
-### Run training
-
-* Delete files from `model` directory if you want to train from scratch
-* Go to the `src` directory and execute `python main.py --mode train --data_dir path/to/IAM`
-* The IAM dataset is split into 95% training data and 5% validation data  
-* If the option `--line_mode` is specified, 
-  the model is trained on text line images created by combining multiple word images into one  
-* Training stops after a fixed number of epochs without improvement
-
-The pretrained word model was trained with this command on a GTX 1050 Ti:
-```
-python main.py --mode train --fast --data_dir path/to/iam  --batch_size 500 --early_stopping 15
-```
-
-And the line model with:
-```
-python main.py --mode train --fast --data_dir path/to/iam  --batch_size 250 --early_stopping 10
-```
-
-
-### Fast image loading
-Loading and decoding the png image files from the disk is the bottleneck even when using only a small GPU.
-The database LMDB is used to speed up image loading:
-* Go to the `src` directory and run `create_lmdb.py --data_dir path/to/iam` with the IAM data directory specified
-* A subfolder `lmdb` is created in the IAM data directory containing the LMDB files
-* When training the model, add the command line option `--fast`
-
-The dataset should be located on an SSD drive.
-Using the `--fast` option and a GTX 1050 Ti training on single words takes around 3h with a batch size of 500.
-Training on text lines takes a bit longer.
-
-
-## Information about model
-
-The model is a stripped-down version of the HTR system I implemented for [my thesis](https://githubharald.github.io/publications.html).
-What remains is the bare minimum to recognize text with an acceptable accuracy.
-It consists of 5 CNN layers, 2 RNN (LSTM) layers and the CTC loss and decoding layer.
-For more details see this [Medium article](https://harald-scheidl.medium.com/2326a3487cd5).
-
-
-## References
-* [Build a Handwritten Text Recognition System using TensorFlow](https://harald-scheidl.medium.com/2326a3487cd5)
-* [Scheidl - Handwritten Text Recognition in Historical Documents](https://githubharald.github.io/publications.html)
-* [Scheidl - Word Beam Search: A Connectionist Temporal Classification Decoding Algorithm](https://githubharald.github.io/publications.html)
-
+## Ghi chú kỹ thuật
+- Inference khôi phục idx_to_char và blank_idx từ checkpoint để decode nhất quán.
+- Preprocess trong inference đồng bộ với dataset (resize giữ tỉ lệ, pad nền trắng, normalize).
+- Có thể ép chạy CPU bằng --device cpu khi không có CUDA.

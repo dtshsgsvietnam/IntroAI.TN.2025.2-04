@@ -1,8 +1,58 @@
-data/words*
-data/words.txt
-src/__pycache__/
-notes/
+# -----------------------------
+# Python cache and build files
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
 *.so
-*.pyc
+*.egg-info/
+build/
+dist/
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+venv/
+env/
+.env/
+.conda/
+.mamba/
+
+# -----------------------------
+# IDE / OS clutter
+# -----------------------------
 .idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -----------------------------
+# Dataset and local data
+# -----------------------------
+dataset/
+data/
+*.lmdb
+
+# -----------------------------
+# Model weights, logs, outputs
+# -----------------------------
+checkpoints/
+src/checkpoints/
+logs/
+runs/
 dump/
+outputs/
+predictions/
+visualizations/
+
+# Inference / test generated images
+*_pred.png
+*_pred.jpg
+*_vis.png
+*_vis.jpg
+
+# Jupyter / experiment artifacts
+.ipynb_checkpoints/
